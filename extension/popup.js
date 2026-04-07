@@ -11,6 +11,7 @@ const elements = {
   githubLink: document.getElementById('githubLink'),
   creatorLink: document.getElementById('creatorLink')
 };
+const ext = typeof browser !== 'undefined' ? browser : chrome;
 
 function updateUI(status) {
   if (status.isConnected) {
@@ -48,7 +49,7 @@ function updateUI(status) {
 
 async function requestStatus() {
   try {
-    const response = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
+    const response = await ext.runtime.sendMessage({ type: 'GET_STATUS' });
     updateUI(response);
   } catch (error) {
     updateUI({
@@ -58,7 +59,7 @@ async function requestStatus() {
   }
 }
 
-chrome.runtime.onMessage.addListener((message) => {
+ext.runtime.onMessage.addListener((message) => {
   if (message.type === 'STATUS_UPDATE') {
     updateUI(message.data);
   }
@@ -66,17 +67,17 @@ chrome.runtime.onMessage.addListener((message) => {
 
 elements.openYTMBtn.addEventListener('click', (e) => {
   e.preventDefault();
-  chrome.tabs.create({ url: 'https://music.youtube.com' });
+  ext.tabs.create({ url: 'https://music.youtube.com' });
 });
 
 elements.githubLink.addEventListener('click', (e) => {
   e.preventDefault();
-  chrome.tabs.create({ url: 'https://github.com/Louchatfroff/YTMusic-RPC' });
+  ext.tabs.create({ url: 'https://github.com/Louchatfroff/YTMusic-RPC' });
 });
 
 elements.creatorLink.addEventListener('click', (e) => {
   e.preventDefault();
-  chrome.tabs.create({ url: 'https://louchat.neurallab.ovh/' });
+  ext.tabs.create({ url: 'https://louchat.neurallab.ovh/' });
 });
 
 requestStatus();

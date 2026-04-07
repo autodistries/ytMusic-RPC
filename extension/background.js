@@ -1,17 +1,42 @@
 const HTTP_SERVER_URL = 'http://127.0.0.1:8766';
+const ext = typeof browser !== 'undefined' ? browser : chrome;
 
 let isConnected = false;
 let currentMusicInfo = null;
 let reconnectTimeout = null;
 
+async function getConfig() {
+  try {
+    const response = await fetch(ext.runtime.getURL('config.json'));
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (e) {
+    console.error('[YTM-RPC] Failed to read config:', e);
+    return null;
+  }
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 2000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function connect() {
   if (isConnected) return;
 
   try {
-    const response = await fetch(`${HTTP_SERVER_URL}/status`, {
-      method: 'GET',
-      signal: AbortSignal.timeout(2000)
-    });
+    const response = await fetchWithTimeout(`${HTTP_SERVER_URL}/status`, {
+      method: 'GET'
+    }, 2000);
 
     if (response.ok) {
       console.log('[YTM-RPC] Connected to Vencord plugin');
@@ -72,7 +97,7 @@ async function clearPresence() {
 
 function broadcastStatus() {
   const status = getStatus();
-  chrome.runtime.sendMessage({
+  ext.runtime.sendMessage({
     type: 'STATUS_UPDATE',
     data: status
   }).catch(() => {});
@@ -85,7 +110,7 @@ function getStatus() {
   };
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+ext.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.type) {
     case 'MUSIC_UPDATE':
       currentMusicInfo = message.data;
@@ -107,6 +132,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse(getStatus());
       break;
 
+    case 'GET_CONFIG':
+      getConfig().then((config) => {
+        sendResponse({
+          clientId: config?.client_id || null
+        });
+      });
+      return true;
+
     case 'CONNECT':
       connect().then(() => {
         sendResponse({ success: isConnected });
@@ -118,12 +151,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-chrome.runtime.onStartup.addListener(() => {
+ext.runtime.onStartup.addListener(() => {
   console.log('[YTM-RPC] Extension started');
   connect();
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+ext.runtime.onInstalled.addListener(() => {
   console.log('[YTM-RPC] Extension installed/updated');
   connect();
 });

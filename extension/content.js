@@ -2,6 +2,7 @@ let lastMusicInfo = null;
 let lastSentTime = 0;
 let observer = null;
 let videoElement = null;
+const ext = typeof browser !== 'undefined' ? browser : chrome;
 
 const CONFIG = {
   MIN_UPDATE_INTERVAL: 2000,
@@ -130,7 +131,7 @@ function sendMusicInfo(force = false) {
   const info = extractMusicInfo();
 
   if (info && (force || hasSignificantChange(info, lastMusicInfo))) {
-    chrome.runtime.sendMessage({
+    ext.runtime.sendMessage({
       type: 'MUSIC_UPDATE',
       data: info
     }).catch((error) => {
@@ -145,7 +146,7 @@ function sendMusicInfo(force = false) {
 }
 
 function sendMusicStopped() {
-  chrome.runtime.sendMessage({
+  ext.runtime.sendMessage({
     type: 'MUSIC_STOPPED'
   }).catch(() => {});
 

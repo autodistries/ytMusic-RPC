@@ -1,3 +1,6 @@
+# I have not taken the time to read this but just read the main readme
+
+
 # YTM-RPC Vencord Plugin
 
 A Vencord plugin that displays your YouTube Music activity on Discord. No separate server needed!

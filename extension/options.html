@@ -56,7 +56,7 @@
   "client_id": "YOUR_CLIENT_ID_HERE",
   "client_secret": ""
 }</pre>
-    <p style="margin-top: 12px; margin-bottom: 0;">After editing, reload the extension in <code>chrome://extensions/</code></p>
+    <p style="margin-top: 12px; margin-bottom: 0;">After editing, reload the extension in your browser's extensions page</p>
   </div>
 
   <div class="card">
@@ -80,9 +80,11 @@
   </div>
 
   <script>
+    const ext = typeof browser !== 'undefined' ? browser : chrome;
+
     async function checkConfig() {
       try {
-        const response = await chrome.runtime.sendMessage({ type: 'GET_CONFIG' });
+        const response = await ext.runtime.sendMessage({ type: 'GET_CONFIG' });
         const dot = document.getElementById('configDot');
         const status = document.getElementById('configStatus');
 

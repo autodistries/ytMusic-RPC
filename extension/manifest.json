@@ -3,6 +3,12 @@
   "name": "YouTube Music Discord RPC",
   "version": "1.0",
   "description": "Display your YouTube Music activity on Discord - No server required!",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "ytmusic-rpc@louchat.neurallab.ovh",
+      "strict_min_version": "121.0"
+    }
+  },
   "permissions": [
     "tabs",
     "storage"
@@ -14,7 +20,8 @@
     "https://discord.com/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
   },
   "content_scripts": [
     {

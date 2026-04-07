@@ -7,11 +7,6 @@
 import { Devs } from "@utils/constants";
 import definePlugin, { OptionType, PluginNative } from "@utils/types";
 import { ApplicationAssetUtils, FluxDispatcher } from "@webpack/common";
-export default definePlugin({
-    name: "ytMusic-RPC",
-    description: "YouTube Music Discord Rich Presence using Vencord and Chromium extension.",
-    authors: [Devs.louchaaat],
-});
 
 const Native = VencordNative.pluginHelpers.YTMusicRPC as PluginNative<typeof import("./native")>;
 let applicationId = "";
@@ -57,23 +52,32 @@ async function createActivity(data: any) {
         try {
             largeImage = await getApplicationAsset(url);
             console.log("[YTM-RPC] Asset ID:", largeImage);
-        } catch (e) {
-            console.log("[YTM-RPC] Failed to get asset, using URL directly");
+        } catch {
             largeImage = url;
         }
     }
 
     const songUrl = data.url || "https://music.youtube.com";
+    const buttonUrls = [songUrl];
     const activity: any = {
         application_id: applicationId,
-        name: "YouTube Music",
-        type: 2,
+        name: `${data.title} − ${data.artist}`.substring(0, 22) || "Unknown track",
+            type: 2,
         details: data.title?.substring(0, 128) || "Unknown",
         state: data.artist?.substring(0, 128) || "Unknown Artist",
         assets: {
             large_image: largeImage,
-            large_text: data.title || "YouTube Music",
+            large_text: data.title || "music!!",
+            small_image: "youtube_music_logo",
+            small_text: "YouTube Music",
         },
+        buttons: ["Listen on YouTube Music"],
+        metadata: {
+            button_urls: buttonUrls,
+        },
+        details_url: songUrl,
+        state_url: `https://music.youtube.com/search?q=${encodeURIComponent(data.artist || "")}`,
+        flags: 1,
     };
 
     if (!data.isPaused && data.duration > 0) {
@@ -84,11 +88,6 @@ async function createActivity(data: any) {
         };
     }
 
-    activity.buttons = [
-        { label: "Listen on YouTube Music", url: songUrl },
-        { label: "by : louchat", url: "https://louchat.neurallab.ovh/" }
-    ];
-    
     return activity;
 }
 
@@ -163,7 +162,7 @@ export default definePlugin({
             pollInterval = null;
         }
 
-        Native.stopServer();
+        Native?.stopServer?.();
         setActivity(null);
     },
 });
