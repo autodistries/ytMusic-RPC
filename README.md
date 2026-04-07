@@ -7,12 +7,13 @@ the project looked ai-generated, my updates also are ai-generated (sorry)
 
 - **Shows current song, artist, and album art on Discord as your activity**
 - **Progress bar with elapsed/remaining time**
+- Multi-browser compat
 
 ## Requirements
 
 - [Git](https://git-scm.com/), [Node.js](https://nodejs.org/) v18+, [pnpm](https://pnpm.io/)
 - Discord desktop app (or Vencord) (no browser support)
-- Gecko based web browser (any Firefox)
+- chromium or gecko
 
 ## Setup
 there are two parts because you need to install the plugin into vencord and also the extension into your browser
@@ -32,6 +33,7 @@ there are two parts because you need to install the plugin into vencord and also
    pnpm build --dev
    pnpm inject
    ```
+     because this is a userplugin so you can't load it very easily
 
 2. **Get a Discord Application ID**
    - Go to [Discord Developer Portal](https://discord.com/developers/applications)
@@ -49,15 +51,32 @@ there are two parts because you need to install the plugin into vencord and also
 See [vencord-plugin/README.md](vencord-plugin/README.md) for detailed instructions (i have not re read them)
 
 ### Install the browser extension
-
+Ok so i tried in librewolf and chromium and things seemed to work fine (chromium showed "'background.scripts' requires manifest version of 2 or lower." but everything seemed to work so idk)
+#### Firefox and the like
+##### Temporarly load it
+When you shutdown the browser you'll have to re-load it
 1. Open `about:debugging#/runtime/this-firefox`
 2. Click on Load temporary add-on
-3. select any file in the extension folder
+3. select any file in the extension folder  
+##### Permanent way
+We can tell firefox to not require signature onextensions. I am not responsible if you install evil extensions after that ! You take responsibility.
+1. open `about:config`
+2. search for `xpinstall.signatures.required`
+3. set the boolean to false
+4. in `about:addons` click setting > Install add-on from file
+5. select the extension.zip  
+tada, permanently loaded
 
+#### Chromium
+1. open `chrome://extensions`
+2. enable developer mode (upper right corner)
+3. click `load unpacked`
+4. select the folder `extension`  
+it looks permanent too (but you should still switch away from chromium if you can)
 ### Use It
 
-1. Make sure Discord is running (with Vencord plugin OR Node.js server)
-2. Play music on [YouTube Music](https://music.youtube.com)
+1. Make sure Discord is running (with Vencord plugin loaded see this readme lol)
+2. Play music on [YouTube Music](https://music.youtube.com) from the browser where you installed the extension
 3. Your Discord status updates automatically!
 
 ## Project Structure
@@ -89,6 +108,8 @@ YTM-RPC/
 > - Refresh the YouTube Music page
 > - Reload the extension
 
+**When I pause the music it does weird shit**
+> yeah idk sorry
 
 ## How does that work ?
 
