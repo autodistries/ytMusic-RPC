@@ -12,7 +12,7 @@ SERVER = "http://127.0.0.1:8766"
 UPLOAD_ENABLED =  "1"
 UPLOAD_CMD = os.environ.get("TET_UPLOAD_CMD", "/home/cat/scripts/zipline-script-upload.sh")
 
-LAST_UPLOAD_TRACK_KEY = None
+LAST_UPLOAD_TRACK_FILE = None
 LAST_UPLOADED_THUMBNAIL = None
 
 prevmusic="non"
@@ -54,12 +54,12 @@ def parse_time_value(value):
 
 
 def upload_with_script(path, track_key):
-    global LAST_UPLOAD_TRACK_KEY, LAST_UPLOADED_THUMBNAIL
+    global LAST_UPLOAD_TRACK_FILE, LAST_UPLOADED_THUMBNAIL
 
     if not UPLOAD_ENABLED or not os.path.exists(UPLOAD_CMD):
         return None
 
-    if LAST_UPLOAD_TRACK_KEY == track_key and LAST_UPLOADED_THUMBNAIL:
+    if LAST_UPLOAD_TRACK_FILE == path and LAST_UPLOADED_THUMBNAIL:
         print("hit cache for this track")
         return LAST_UPLOADED_THUMBNAIL
 
@@ -69,7 +69,7 @@ def upload_with_script(path, track_key):
         print("ha ran", output)
         match = re.search(r'https?://[^\s\"\'"<>]+', output)
         if match:
-            LAST_UPLOAD_TRACK_KEY = track_key
+            LAST_UPLOAD_TRACK_FILE = path
             LAST_UPLOADED_THUMBNAIL = match.group(0)
             return LAST_UPLOADED_THUMBNAIL
     except Exception:
