@@ -61,13 +61,13 @@ async function createActivity(data: any) {
     const buttonUrls = [songUrl];
     const activity: any = {
         application_id: applicationId,
-        name: `${data.title} − ${data.artist}`.substring(0, 22) || "Unknown track",
+        name: `${data.title} − ${data.artist}` || "music!!",
             type: 2,
-        details: data.title?.substring(0, 128) || "Unknown",
+        details: data.title?.substring(0, 128) || "Unknown name",
         state: data.artist?.substring(0, 128) || "Unknown Artist",
         assets: {
             large_image: largeImage,
-            large_text: data.title || "music!!",
+            large_text: data.album || "unknown album sry",
             small_image: "youtube_music_logo",
             small_text: "YouTube Music",
         },

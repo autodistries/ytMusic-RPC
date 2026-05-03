@@ -79,6 +79,44 @@ it looks permanent too (but you should still switch away from chromium if you ca
 2. Play music on [YouTube Music](https://music.youtube.com) from the browser where you installed the extension
 3. Your Discord status updates automatically!
 
+## Linux script (no browser extension)
+
+Use this if you are on Linux and want local media -> Vencord RPC without the web extension.
+
+Script: `tet.py`
+
+Requirements:
+- Linux
+- Python 3
+- `playerctl` (reads MPRIS media metadata)
+- Python package: `requests`
+- Vencord plugin running (HTTP server on `127.0.0.1:8766` by default)
+
+Install deps:
+```bash
+sudo apt install playerctl
+python3 -m pip install requests
+```
+
+Run:
+```bash
+python3 tet.py
+```
+
+Optional cover upload:
+- Script can upload local album art with your upload script.
+- Default upload script path: `/home/cat/scripts/zipline-script-upload.sh` (required for thumbnails!!)
+- Override path:
+```bash
+TET_UPLOAD_CMD="/path/to/your/upload-script.sh" python3 tet.py
+```
+
+What it does:
+- Polls player metadata with `playerctl`
+- Sends updates to Vencord plugin `/update`
+- Sends clear to `/clear` when nothing is playing
+- Caches uploaded cover URL per track key, so same track is not re-uploaded every poll
+
 ## Project Structure
 
 ```
