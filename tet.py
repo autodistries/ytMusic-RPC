@@ -83,13 +83,15 @@ def get_info():
     players = run("playerctl -l").splitlines()
     if not players:
         return None
-    player = players[0]
-    # take the first of the two that has a title
+    player = None
+    # take the first of the two that has a status of Playing else none
     for p in players:
-        t = run(f"playerctl -p {p} metadata xesam:title")
-        if t:
+        s = run(f"playerctl -p {p} status")
+        if s == "Playing":
             player = p
             break
+    if not player:
+        return None
     title = run(f"playerctl -p {player} metadata xesam:title")
     artist = run(f"playerctl -p {player} metadata xesam:artist")
     album = run(f"playerctl -p {player} metadata xesam:album")
