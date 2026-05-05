@@ -68,15 +68,15 @@ async function createActivity(data: any) {
         assets: {
             large_image: largeImage,
             large_text: data.album || "unknown album sry",
-            small_image: "youtube_music_logo",
-            small_text: "YouTube Music",
+            // small_image: "youtube_music_logo",
+            // small_text: "YouTube Music",
         },
-        buttons: ["Listen on YouTube Music"],
-        metadata: {
-            button_urls: buttonUrls,
-        },
-        details_url: songUrl,
-        state_url: `https://music.youtube.com/search?q=${encodeURIComponent(data.artist || "")}`,
+        // buttons: ["Listen on YouTube Music"],
+        // metadata: {
+        //     button_urls: buttonUrls,
+        // },
+        // details_url: songUrl,
+        // state_url: `https://music.youtube.com/search?q=${encodeURIComponent(data.artist || "")}`,
         flags: 1,
     };
 
