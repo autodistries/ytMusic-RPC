@@ -10,7 +10,7 @@ import requests
 SERVER = "http://127.0.0.1:8766"
 
 UPLOAD_ENABLED =  "1"
-UPLOAD_CMD = os.environ.get("TET_UPLOAD_CMD", "/home/cat/scripts/zipline-script-upload.sh")
+UPLOAD_CMD = os.environ.get("TET_UPLOAD_CMD", "/home/cat/scripts/zipline-temp-upload.sh")
 
 LAST_UPLOAD_TRACK_FILE = None
 LAST_UPLOADED_THUMBNAIL = None
