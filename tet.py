@@ -147,10 +147,15 @@ def post_clear():
         pass
 
 if __name__ == "__main__":
-    while True:
-        info = get_info()
-        if info:
-            post_update(info)
-        else:
-            post_clear()
-        time.sleep(1)
+    try:
+        while True:
+            info = get_info()
+            if info:
+                post_update(info)
+            else:
+                post_clear()
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Exiting...")
+        post_clear()
+
