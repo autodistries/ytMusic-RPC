@@ -1,14 +1,19 @@
-# YTM-RPC - YouTube Music Discord Rich Presence
+# Any Music Discord Rich Presence
 
-This work is based on https://github.com/Louchatfroff/YTMusic-RPC but now it works  
+This work was based on https://github.com/Louchatfroff/YTMusic-RPC 
 the project looked ai-generated, my updates also are ai-generated (sorry)
 
-## Features
+## What's inside
+- A Vencord userplugin (obv compatible with equicord, pawsome, etc)
+- a browser extension (that works for chromium and gecko/firefox)
+- a Python script for Linux users (requires you ton install [playerctl](https://github.com/altdesktop/playerctl), do it with your package manager if possible)
 
-- **Shows current song, artist, and album art on Discord as your activity**
-- **Progress bar with elapsed/remaining time**
-- Multi-browser compat
+## What it does
+- The vencord userplugin listens for activity updates that would be sent by the extension or the script and shows the recieved data as a listening activity (this is a RPC)
+- The browser extension parses track info from the web music.youtube.com and sends it to the RPC (works in bg)
+- The script listens to currently active, playing media on your PC, uploads the artwork to a server (optional) and sends data to the RPC (also works with KDE connect)
 
+ill finish the readme later, AI is so shit at being clear
 ## Requirements
 
 - [Git](https://git-scm.com/), [Node.js](https://nodejs.org/) v18+, [pnpm](https://pnpm.io/)
