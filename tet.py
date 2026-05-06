@@ -16,7 +16,7 @@ LAST_UPLOAD_TRACK_FILE = None
 LAST_UPLOADED_THUMBNAIL = None
 
 prevmusic="non"
-
+prevart = None
 
 def run(cmd):
     p = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -64,6 +64,7 @@ def upload_with_script(path, track_key):
         return LAST_UPLOADED_THUMBNAIL
 
     try:
+        print("Trying to upload")
         p = subprocess.run(f'{UPLOAD_CMD} "{path}"', shell=True, capture_output=True, text=True, timeout=15)
         output = (p.stdout or "") + "\n" + (p.stderr or "")
         print("ha ran", output)
@@ -79,7 +80,7 @@ def upload_with_script(path, track_key):
     return None
 
 def get_info():
-    global prevmusic
+    global prevmusic, prevart
     players = run("playerctl -l").splitlines()
     if not players:
         return None
@@ -92,25 +93,28 @@ def get_info():
             break
     if not player:
         return None
-    title = run(f"playerctl -p {player} metadata xesam:title")
-    artist = run(f"playerctl -p {player} metadata xesam:artist")
-    album = run(f"playerctl -p {player} metadata xesam:album")
-    status = run(f"playerctl -p {player} status")
-    pos = run(f"playerctl -p {player} position")
-    length = run(f"playerctl -p {player} metadata mpris:length")
-    art = run(f"playerctl -p {player} metadata mpris:artUrl") or run(f"playerctl -p {player} metadata xesam:artUrl") or run(f"playerctl -p {player} metadata artUrl")
+    fmt = "{{playerName}}\x1f{{status}}\x1f{{title}}\x1f{{artist}}\x1f{{album}}\x1f{{position}}\x1f{{mpris:length}}\x1f{{xesam:url}}\x1f{{mpris:artUrl}}\x1f{{xesam:artUrl}}\x1f{{artUrl}}"
+    values = run(f"playerctl -p {player} metadata --format '{fmt}'").split("\x1f")
+    if len(values) < 11:
+        values += [""] * (11 - len(values))
+
+    _, status, title, artist, album, pos, length, url, art1, art2, art3 = values[:11]
+    art = art1 or art2 or art3
 
     track_key = "|".join([
         title or "",
         artist or "",
-        str(parse_time_value(length)),
-        run(f"playerctl -p {player} metadata xesam:url") or ""
+        str(parse_time_value(length))
     ])
+    new=False
     if not prevmusic or prevmusic != track_key:
         print(f"New track: {track_key}")
         prevmusic = track_key
+        new=True
 
     if art:
+        if new:
+            print(f"parsing art from {art}")
         parsed = urllib.parse.urlparse(art)
         local_path = None
         if parsed.scheme == "file":
@@ -122,6 +126,11 @@ def get_info():
             uploaded = upload_with_script(local_path, track_key)
             if uploaded:
                 art = uploaded
+        prevart = art
+    else:
+        if not new:
+            print("restored art (ytm)")
+            art = prevart
 
     return {
         "title": title or None,
@@ -129,7 +138,7 @@ def get_info():
         "album": album or None,
         "currentTime": parse_time_value(pos),
         "duration": parse_time_value(length),
-        "isPaused": status != "Playing",
+        "isPaused": status != "Playing", # ultimately yhis is useless
         "thumbnail": art or None,
         "url": None
     }
@@ -151,10 +160,11 @@ if __name__ == "__main__":
         while True:
             info = get_info()
             if info:
+                print(info)
                 post_update(info)
             else:
                 post_clear()
-            time.sleep(1)
+            time.sleep(0.96)
     except KeyboardInterrupt:
         print("Exiting...")
         post_clear()
