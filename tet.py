@@ -110,6 +110,7 @@ def get_info():
     if not prevmusic or prevmusic != track_key:
         print(f"New track: {track_key}")
         prevmusic = track_key
+        prevart=None
         new=True
 
     if art:
@@ -128,9 +129,10 @@ def get_info():
                 art = uploaded
         prevart = art
     else:
-        if not new:
+        if prevart and not new:
             print("restored art (ytm)")
             art = prevart
+                
 
     return {
         "title": title or None,
