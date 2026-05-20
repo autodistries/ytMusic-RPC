@@ -70,6 +70,7 @@ function extractMusicInfo() {
       document.querySelector('ytmusic-player-bar .byline') ||
       document.querySelector('.content-info-wrapper .byline');
 
+
     const thumbnailElement =
       document.querySelector('ytmusic-player-bar img.image') ||
       document.querySelector('ytmusic-player-bar .thumbnail img') ||
@@ -89,10 +90,12 @@ function extractMusicInfo() {
     let artistText = artistElement?.textContent?.trim() || '';
     const artistParts = artistText.split('•');
     artistText = cleanArtistString(artistParts[0]);
+    let albumText = artistParts[1]?.trim() || '';
 
     return {
       title,
       artist: artistText,
+      album: albumText,
       thumbnail: thumbnailUrl,
       currentTime,
       duration,
@@ -113,6 +116,7 @@ function hasSignificantChange(newInfo, oldInfo) {
 
   if (newInfo.title !== oldInfo.title) return true;
   if (newInfo.artist !== oldInfo.artist) return true;
+  if (newInfo.album !== oldInfo.album) return true;
   if (newInfo.isPaused !== oldInfo.isPaused) return true;
 
   const timeDiff = Math.abs(newInfo.currentTime - oldInfo.currentTime);
