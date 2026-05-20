@@ -2,6 +2,7 @@
 import os
 import re
 import subprocess
+import threading
 import time
 import urllib.parse
 
@@ -9,14 +10,14 @@ import requests
 
 SERVER = "http://127.0.0.1:8766"
 
-UPLOAD_ENABLED =  "1"
 UPLOAD_CMD = os.environ.get("TET_UPLOAD_CMD", "/home/cat/scripts/zipline-temp-upload.sh")
 
-LAST_UPLOAD_TRACK_FILE = None
-LAST_UPLOADED_THUMBNAIL = None
+_upload_lock = threading.Lock()
+_upload_state = {"path": None, "url": None, "running": False}
 
-prevmusic="non"
+prevmusic = None
 prevart = None
+current_player = None
 
 def run(cmd):
     p = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -26,43 +27,15 @@ def run(cmd):
 def parse_time_value(value):
     if not value:
         return 0.0
-
-    value = value.strip()
-    if ":" in value:
-        try:
-            parts = [float(part) for part in value.split(":")][::-1]
-        except Exception:
-            return 0.0
-
-        seconds = 0.0
-        multiplier = 1.0
-        for part in parts:
-            seconds += part * multiplier
-            multiplier *= 60.0
-        return seconds
-
     try:
-        numeric_value = float(value)
+        return float(value) / 1_000_000.0
     except Exception:
         return 0.0
 
-    if numeric_value >= 1_000_000.0:
-        return numeric_value / 1_000_000.0
-    if numeric_value >= 1000.0:
-        return numeric_value / 1000.0
-    return numeric_value
 
-
-def upload_with_script(path, track_key):
-    global LAST_UPLOAD_TRACK_FILE, LAST_UPLOADED_THUMBNAIL
-
-    if not UPLOAD_ENABLED or not os.path.exists(UPLOAD_CMD):
+def _run_upload(path):
+    if not os.path.exists(UPLOAD_CMD):
         return None
-
-    if LAST_UPLOAD_TRACK_FILE == path and LAST_UPLOADED_THUMBNAIL:
-        print("hit cache for this track")
-        return LAST_UPLOADED_THUMBNAIL
-
     try:
         print("Trying to upload")
         p = subprocess.run(f'{UPLOAD_CMD} "{path}"', shell=True, capture_output=True, text=True, timeout=15)
@@ -70,35 +43,46 @@ def upload_with_script(path, track_key):
         print("ha ran", output)
         match = re.search(r'https?://[^\s\"\'"<>]+', output)
         if match:
-            LAST_UPLOAD_TRACK_FILE = path
-            LAST_UPLOADED_THUMBNAIL = match.group(0)
-            return LAST_UPLOADED_THUMBNAIL
+            return match.group(0)
     except Exception:
         print("écouldn uplod")
-
-
     return None
 
+def _upload_thread_fn(path):
+    url = _run_upload(path)
+    with _upload_lock:
+        if _upload_state["path"] == path:
+            _upload_state["url"] = url
+            _upload_state["running"] = False
+
 def get_info():
-    global prevmusic, prevart
+    global prevmusic, prevart, current_player
     players = run("playerctl -l").splitlines()
     if not players:
-        return None
+        current_player = None
+        return None, False
     player = None
-    # take the first of the two that has a status of Playing else none
+    paused_current = None
     for p in players:
         s = run(f"playerctl -p {p} status")
         if s == "Playing":
             player = p
             break
+        if p == current_player and s == "Paused":
+            paused_current = p
     if not player:
-        return None
-    fmt = "{{playerName}}\x1f{{status}}\x1f{{title}}\x1f{{artist}}\x1f{{album}}\x1f{{position}}\x1f{{mpris:length}}\x1f{{xesam:url}}\x1f{{mpris:artUrl}}\x1f{{xesam:artUrl}}\x1f{{artUrl}}"
+        if paused_current:
+            player = paused_current
+        else:
+            current_player = None
+            return None, False
+    current_player = player
+    fmt = "{{playerName}}\x1f{{status}}\x1f{{title}}\x1f{{artist}}\x1f{{album}}\x1f{{position}}\x1f{{mpris:length}}\x1f{{mpris:artUrl}}\x1f{{xesam:artUrl}}\x1f{{artUrl}}"
     values = run(f"playerctl -p {player} metadata --format '{fmt}'").split("\x1f")
-    if len(values) < 11:
-        values += [""] * (11 - len(values))
+    if len(values) < 10:
+        values += [""] * (10 - len(values))
 
-    _, status, title, artist, album, pos, length, url, art1, art2, art3 = values[:11]
+    _, status, title, artist, album, pos, length, art1, art2, art3 = values[:10]
     art = art1 or art2 or art3
 
     track_key = "|".join([
@@ -106,12 +90,12 @@ def get_info():
         artist or "",
         str(parse_time_value(length))
     ])
-    new=False
-    if not prevmusic or prevmusic != track_key:
+    new = False
+    if prevmusic != track_key:
         print(f"New track: {track_key}")
         prevmusic = track_key
-        prevart=None
-        new=True
+        prevart = None
+        new = True
 
     if art:
         if new:
@@ -124,15 +108,25 @@ def get_info():
             local_path = art
 
         if local_path:
-            uploaded = upload_with_script(local_path, track_key)
-            if uploaded:
-                art = uploaded
-        prevart = art
+            with _upload_lock:
+                sp, su = _upload_state["path"], _upload_state["url"]
+            if sp == local_path:
+                if su:
+                    print("hit cache for this track")
+                    art = su
+                    prevart = art
+                # else: upload still running, art stays as-is (no prevart update yet)
+            else:
+                with _upload_lock:
+                    _upload_state.update({"path": local_path, "url": None, "running": True})
+                threading.Thread(target=_upload_thread_fn, args=(local_path,), daemon=True).start()
+                # art stays as-is until upload finishes
+        else:
+            prevart = art
     else:
-        if prevart and not new:
+        if prevart is not None and not new:
             print("restored art (ytm)")
             art = prevart
-                
 
     return {
         "title": title or None,
@@ -140,10 +134,9 @@ def get_info():
         "album": album or None,
         "currentTime": parse_time_value(pos),
         "duration": parse_time_value(length),
-        "isPaused": status != "Playing", # ultimately yhis is useless
+        "isPaused": status != "Playing",
         "thumbnail": art or None,
-        "url": None
-    }
+    }, new
 
 def post_update(data):
     try:
@@ -158,16 +151,68 @@ def post_clear():
         pass
 
 if __name__ == "__main__":
+    last_sent_pos = None
+    last_sent_time = None
+    last_was_paused = None
+    last_sent_thumbnail = None
+    had_info = False
+
     try:
         while True:
-            info = get_info()
+            info, new_track = get_info()
+            now = time.monotonic()
+
             if info:
-                print(info)
-                post_update(info)
+                current_pos = info["currentTime"]
+                is_paused = info["isPaused"]
+                should_send = False
+
+                glitched_pos = current_pos < 0.1 and (last_sent_pos or 0.0) < 0.1
+
+                if new_track:
+                    should_send = True
+                elif info["thumbnail"] != last_sent_thumbnail:
+                    print("thb changed")
+                    should_send = True
+                elif last_sent_pos is None or last_sent_time is None:
+                    print("never pushed")
+                    should_send = True
+                elif is_paused != last_was_paused:
+                    should_send = True
+                elif is_paused:
+                    pass  # discord holds position while paused, nothing to correct
+                elif glitched_pos:
+                    print("glitched")
+                    pass  # playerctl position glitch, ignore
+                elif current_pos < last_sent_pos:
+                    print(f"backward seek {current_pos=} {last_sent_pos=}")
+                    should_send = True  # seeked backward
+                else:
+                    elapsed = now - last_sent_time
+                    expected_pos = last_sent_pos + elapsed
+                    if abs(current_pos - expected_pos) > 1.5:
+                        print("elkej")
+                        should_send = True  # drifted or seeked forward
+
+                if should_send:
+                    print(f"sending update: pos={current_pos:.1f}, paused={is_paused}, new={new_track}")
+                    post_update(info)
+                    last_sent_pos = current_pos
+                    last_sent_time = now
+                    last_was_paused = is_paused
+                    last_sent_thumbnail = info["thumbnail"]
+
+                had_info = True
             else:
-                post_clear()
-            time.sleep(0.96)
+                if had_info:
+                    print("clearing")
+                    post_clear()
+                    last_sent_pos = None
+                    last_sent_time = None
+                    last_was_paused = None
+                    last_sent_thumbnail = None
+                had_info = False
+
+            time.sleep(1)
     except KeyboardInterrupt:
         print("Exiting...")
-        post_clear()
-
