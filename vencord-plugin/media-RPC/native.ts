@@ -5,8 +5,8 @@
  */
 
 /**
- * Native module exports for YTMusicRPC plugin.
- * These functions interface with the native HTTP server and YouTube Music extension.
+ * Native module exports for anyMediaRPC plugin.
+ * These functions interface with the native HTTP server and the script.
  */
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -113,13 +113,13 @@ export async function startServer(arg1: unknown, arg2?: unknown): Promise<{ succ
 
         httpServer.once("error", (err: NodeJS.ErrnoException) => {
             const message = err?.code ? `${err.code}: ${err.message}` : (err?.message || "Unknown error");
-            console.error("[YTM-RPC] Failed to start server:", message);
+            console.error("[anyMediaRPC] Failed to start server:", message);
             resolve({ success: false, error: message });
         });
 
         httpServer.listen(port, "127.0.0.1", () => {
             server = httpServer;
-            console.log("[YTM-RPC] HTTP server listening on 127.0.0.1:" + port);
+            console.log("[anyMediaRPC] HTTP server listening on 127.0.0.1:" + port);
             resolve({ success: true });
         });
     });
@@ -135,7 +135,7 @@ export async function stopServer(): Promise<void> {
     server = null;
     latestData = null;
     shouldClear = false;
-    console.log("[YTM-RPC] HTTP server stopped");
+    console.log("[anyMediaRPC] HTTP server stopped");
 }
 
 export async function getLatestData(): Promise<{

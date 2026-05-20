@@ -5,6 +5,7 @@
  */
 
 import { Devs } from "@utils/constants";
+import { definePluginSettings } from "@api/Settings";
 import definePlugin, { OptionType, PluginNative } from "@utils/types";
 import { ApplicationAssetUtils, FluxDispatcher } from "@webpack/common";
 
@@ -34,10 +35,10 @@ function setActivity(activity: any | null) {
         FluxDispatcher.dispatch({
             type: "LOCAL_ACTIVITY_UPDATE",
             activity: activity,
-            socketId: "YTM-RPC",
+            socketId: "anyMediaRPC",
         });
     } catch (e) {
-        console.error("[YTM-RPC] Failed to set activity:", e);
+        console.error("[anyMediaRPC] Failed to set activity:", e);
     }
 }
 
@@ -51,7 +52,7 @@ async function createActivity(data: any) {
         }
         try {
             largeImage = await getApplicationAsset(url);
-            console.log("[YTM-RPC] Asset ID:", largeImage);
+            console.log("[anyMediaRPC] Asset ID:", largeImage);
         } catch {
             largeImage = url;
         }
@@ -61,7 +62,7 @@ async function createActivity(data: any) {
     const buttonUrls = [songUrl];
     const activity: any = {
         application_id: applicationId,
-        name: `${data.title} − ${data.artist}` || "music!!",
+        name: data.forceMain || `${data.title} − ${data.artist}` || "music!!",
             type: 2,
         details: data.title?.substring(0, 128) || "Unknown name",
         state: data.artist?.substring(0, 128) || "Unknown Artist",
@@ -107,17 +108,17 @@ async function pollForUpdates() {
         lastDataHash = hash;
         const activity = await createActivity(data);
         setActivity(activity);
-        console.log("[YTM-RPC] Updated:", data.title);
+        console.log("[anyMediaRPC] Updated:", data.title);
     } catch (e) {
-        console.error("[YTM-RPC] Poll error:", e);
+        console.error("[anyMediaRPC] Poll error:", e);
     }
 }
 
 export default definePlugin({
-    name: "YTMusicRPC",
-    description: "Display your YouTube Music activity as Discord status. Works with the YTM-RPC browser extension.",
-    authors: [Devs.Ven],
-    options: {
+    name: "anyMediaRPC",
+    description: "Display your media activity as Discord status. Works with the companion script or the browser extension for ytm.",
+    authors: [532967505438965780n],
+    settings: definePluginSettings({
         applicationId: {
             type: OptionType.STRING,
             description: "Your Discord Application ID (from Developer Portal)",
@@ -125,29 +126,29 @@ export default definePlugin({
         },
         port: {
             type: OptionType.NUMBER,
-            description: "HTTP port for extension connection",
+            description: "HTTP port for connection local server",
             default: 8766,
         },
-    },
+    }),
 
     async start() {
-        const settings = Vencord.Settings.plugins.YTMusicRPC;
+        const settings = Vencord.Settings.plugins.anyMediaRPC;
         applicationId = settings?.applicationId || "";
         const port = settings?.port || 8766;
         if (!applicationId) {
-            console.warn("[YTM-RPC] No Application ID configured! Go to Settings > Plugins > YTMusicRPC");
+            console.warn("[anyMediaRPC] No Application ID configured! Go to Settings > Plugins > anyMediaRPC");
             return;
         }
 
-        console.log("[YTM-RPC] Starting with Application ID:", applicationId);
+        console.log("[anyMediaRPC] Starting with Application ID:", applicationId);
         if (!Native || !Native.startServer) {
-            console.error("[YTM-RPC] Native module not loaded! Make sure native.ts exists.");
+            console.error("[anyMediaRPC] Native module not loaded!");
             return;
         }
 
         const result = await Native.startServer(port);
         if (!result?.success) {
-            console.error("[YTM-RPC] Failed to start HTTP server:", result?.error || "Unknown error");
+            console.error("[anyMediaRPC] Failed to start HTTP server:", result?.error || "Unknown error");
             return;
         }
 
@@ -155,7 +156,7 @@ export default definePlugin({
     },
 
     stop() {
-        console.log("[YTM-RPC] Stopping...");
+        console.log("[anyMediaRPC] Stopping...");
 
         if (pollInterval) {
             clearInterval(pollInterval);
