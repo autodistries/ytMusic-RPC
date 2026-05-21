@@ -4,16 +4,15 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/**
- * Native module exports for anyMediaRPC plugin.
- * These functions interface with the native HTTP server and the script.
- */
-
+import { Logger } from "@utils/Logger";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+
+const logger = new Logger("anyMediaRPC");
 
 type MusicData = {
     title: string;
     artist: string;
+    album: string;
     thumbnail: string;
     url: string;
     currentTime: number;
@@ -71,7 +70,7 @@ function readJsonBody(req: IncomingMessage): Promise<any> {
     });
 }
 
-export async function startServer(arg1: unknown, arg2?: unknown): Promise<{ success: boolean; error?: string }> {
+export async function startServer(arg1: unknown, arg2?: unknown): Promise<{ success: boolean; error?: string; }> {
     if (server) {
         return { success: true };
     }
@@ -113,13 +112,13 @@ export async function startServer(arg1: unknown, arg2?: unknown): Promise<{ succ
 
         httpServer.once("error", (err: NodeJS.ErrnoException) => {
             const message = err?.code ? `${err.code}: ${err.message}` : (err?.message || "Unknown error");
-            console.error("[anyMediaRPC] Failed to start server:", message);
+            logger.error("Failed to start server:", message);
             resolve({ success: false, error: message });
         });
 
         httpServer.listen(port, "127.0.0.1", () => {
             server = httpServer;
-            console.log("[anyMediaRPC] HTTP server listening on 127.0.0.1:" + port);
+            logger.log("HTTP server listening on 127.0.0.1:" + port);
             resolve({ success: true });
         });
     });
@@ -135,12 +134,13 @@ export async function stopServer(): Promise<void> {
     server = null;
     latestData = null;
     shouldClear = false;
-    console.log("[anyMediaRPC] HTTP server stopped");
+    logger.log("HTTP server stopped");
 }
 
 export async function getLatestData(): Promise<{
     title: string;
     artist: string;
+    album: string;
     thumbnail: string;
     url: string;
     currentTime: number;

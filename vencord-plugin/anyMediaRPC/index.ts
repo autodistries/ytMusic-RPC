@@ -5,22 +5,25 @@
  */
 
 import { Devs } from "@utils/constants";
+import { Logger } from "@utils/Logger";
 import { definePluginSettings } from "@api/Settings";
 import definePlugin, { OptionType, PluginNative } from "@utils/types";
 import { ApplicationAssetUtils, FluxDispatcher } from "@webpack/common";
 
-const Native = VencordNative.pluginHelpers.YTMusicRPC as PluginNative<typeof import("./native")>;
+const logger = new Logger("anyMediaRPC");
+
+const Native = VencordNative.pluginHelpers.anyMediaRPC as PluginNative<typeof import("./native")>;
 let applicationId = "";
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 let lastDataHash = "";
-function hashData(data: any) {
+function hashData(data: Record<string, unknown>) {
     return [
         data.title,
         data.artist,
         data.isPaused,
-        Math.floor(data.currentTime),
-        Math.floor(data.duration),
+        Math.floor(data.currentTime as number),
+        Math.floor(data.duration as number),
         data.url
     ].join("|");
 }
@@ -30,7 +33,7 @@ async function getApplicationAsset(key: string): Promise<string> {
     return (await ApplicationAssetUtils.fetchAssetIds(applicationId, [key]))[0];
 }
 
-function setActivity(activity: any | null) {
+function setActivity(activity: Record<string, unknown> | null) {
     try {
         FluxDispatcher.dispatch({
             type: "LOCAL_ACTIVITY_UPDATE",
@@ -38,37 +41,38 @@ function setActivity(activity: any | null) {
             socketId: "anyMediaRPC",
         });
     } catch (e) {
-        console.error("[anyMediaRPC] Failed to set activity:", e);
+        logger.error("Failed to set activity:", e);
     }
 }
 
-async function createActivity(data: any) {
+async function createActivity(data: Record<string, unknown>) {
     if (!applicationId) return null;
     let largeImage: string | undefined;
     if (data.thumbnail) {
-        let url = data.thumbnail.replace("http://", "https://");
+        let url = String(data.thumbnail).replace("http://", "https://");
         if (url.includes("lh3.googleusercontent.com") && !url.includes("-rj")) {
             url = url.replace(/=w\d+(-h\d+)?/, "=w544-h544-rj");
         }
         try {
             largeImage = await getApplicationAsset(url);
-            console.log("[anyMediaRPC] Asset ID:", largeImage);
-        } catch {
+            logger.log("Asset ID:", largeImage);
+        } catch (e) {
+            logger.error("Failed to fetch asset:", e);
             largeImage = url;
         }
     }
 
-    const songUrl = data.url || "https://music.youtube.com";
+    const songUrl = String(data.url ?? "https://music.youtube.com");
     const buttonUrls = [songUrl];
-    const activity: any = {
+    const activity: Record<string, unknown> = {
         application_id: applicationId,
-        name: data.forceMain || `${data.title} − ${data.artist}` || "music!!",
+        name: data.forceMain || `${data.title} − ${data.artist}` || "music!!" as string,
             type: 2,
-        details: data.title?.substring(0, 128) || "Unknown name",
-        state: data.artist?.substring(0, 128) || "Unknown Artist",
+        details: String(data.title ?? "Unknown name").substring(0, 128),
+        state: String(data.artist ?? "Unknown Artist").substring(0, 128),
         assets: {
             large_image: largeImage,
-            large_text: data.album || "unknown album sry",
+            large_text: String(data.album ?? "unknown album sry"),
             // small_image: "youtube_music_logo",
             // small_text: "YouTube Music",
         },
@@ -81,11 +85,11 @@ async function createActivity(data: any) {
         flags: 1,
     };
 
-    if (!data.isPaused && data.duration > 0) {
+    if (!data.isPaused && (data.duration as number) > 0) {
         const now = Date.now();
         activity.timestamps = {
-            start: Math.floor(now - (data.currentTime * 1000)),
-            end: Math.floor(now + ((data.duration - data.currentTime) * 1000)),
+            start: Math.floor(now - ((data.currentTime as number) * 1000)),
+            end: Math.floor(now + (((data.duration as number) - (data.currentTime as number)) * 1000)),
         };
     }
 
@@ -104,20 +108,20 @@ async function pollForUpdates() {
         const data = await Native.getLatestData();
         if (!data) return;
         const hash = hashData(data);
-        if (hash === lastDataHash) return; // skip if nothing changed
+        if (hash === lastDataHash) return;
         lastDataHash = hash;
         const activity = await createActivity(data);
         setActivity(activity);
-        console.log("[anyMediaRPC] Updated:", data.title);
+        logger.log("Updated:", data.title);
     } catch (e) {
-        console.error("[anyMediaRPC] Poll error:", e);
+        logger.error("Poll error:", e);
     }
 }
 
 export default definePlugin({
     name: "anyMediaRPC",
     description: "Display your media activity as Discord status. Works with the companion script or the browser extension for ytm.",
-    authors: [532967505438965780n],
+    authors: [{name: "catsoft", id:532967505438965780n}],
     settings: definePluginSettings({
         applicationId: {
             type: OptionType.STRING,
@@ -136,19 +140,19 @@ export default definePlugin({
         applicationId = settings?.applicationId || "";
         const port = settings?.port || 8766;
         if (!applicationId) {
-            console.warn("[anyMediaRPC] No Application ID configured! Go to Settings > Plugins > anyMediaRPC");
+            logger.warn("No Application ID configured! Go to Settings > Plugins > anyMediaRPC");
             return;
         }
 
-        console.log("[anyMediaRPC] Starting with Application ID:", applicationId);
+        logger.log("Starting with Application ID:", applicationId);
         if (!Native || !Native.startServer) {
-            console.error("[anyMediaRPC] Native module not loaded!");
+            logger.error("Native module not loaded!");
             return;
         }
 
         const result = await Native.startServer(port);
         if (!result?.success) {
-            console.error("[anyMediaRPC] Failed to start HTTP server:", result?.error || "Unknown error");
+            logger.error("Failed to start HTTP server:", result?.error || "Unknown error");
             return;
         }
 
@@ -156,7 +160,7 @@ export default definePlugin({
     },
 
     stop() {
-        console.log("[anyMediaRPC] Stopping...");
+        logger.log("Stopping...");
 
         if (pollInterval) {
             clearInterval(pollInterval);
